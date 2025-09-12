@@ -6,15 +6,29 @@ on:
       - main
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v0.1.10
         with:
-          context: .
-          push: false
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.NOVUSERVICE }}
+          port: 22
+          script: |
+            cd /home/dannv/docker-apps/novuservice
+            if [ ! -f .env ]; then
+              cp .env.example .env
+              echo "Copied .env.example to .env"
+            else
+              echo ".env file already exists"
+            fi
+            docker-compose pull
+            docker-compose up -d
