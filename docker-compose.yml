@@ -1,0 +1,301 @@
+version: "3.8"
+
+services:
+  # MongoDB database
+  mongodb:
+    image: mongo:5.0
+    container_name: novu-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
+    ports:
+      - "${MONGO_PORT}:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - novu-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # Redis for caching and queues
+  redis:
+    image: redis:7-alpine
+    container_name: novu-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - novu-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Novu API
+  novu-api:
+    image: ${NOVU_API_IMAGE}
+    container_name: novu-api
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+      - redis
+    environment:
+      # Core configuration
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${API_PORT}
+
+      # JWT Configuration
+      JWT_SECRET: ${JWT_SECRET}
+      NOVU_SECRET_KEY: ${NOVU_SECRET_KEY}
+
+      # Database URLs
+      MONGO_URL: ${MONGO_URL}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Encryption
+      STORE_ENCRYPTION_KEY: ${STORE_ENCRYPTION_KEY}
+
+      # Storage Configuration
+      STORAGE_SERVICE: ${STORAGE_SERVICE}
+      LOCAL_STORAGE_PATH: /usr/src/app/uploads
+
+      # S3 Configuration (if using S3)
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      S3_REGION: ${S3_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+
+      # Frontend URL
+      FRONT_BASE_URL: ${FRONT_BASE_URL}
+
+      # Docker specific
+      IS_DOCKER_HOSTED: true
+
+      # Optional services
+      NEW_RELIC_ENABLED: ${NEW_RELIC_ENABLED}
+      SENTRY_DSN: ${SENTRY_DSN}
+
+      # Email providers (optional)
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+
+    ports:
+      - "${API_PORT}:${API_PORT}"
+    volumes:
+      - api_logs:/usr/src/app/logs
+      - api_uploads:/usr/src/app/uploads
+    networks:
+      - novu-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    healthcheck:
+      test:
+        ["CMD", "curl", "-f", "http://localhost:${API_PORT}/v1/health-check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Novu Worker
+  novu-worker:
+    image: ${NOVU_WORKER_IMAGE}
+    container_name: novu-worker
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+      - redis
+      - novu-api
+    environment:
+      # Core configuration
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${WORKER_PORT}
+
+      # JWT Configuration
+      JWT_SECRET: ${JWT_SECRET}
+      NOVU_SECRET_KEY: ${NOVU_SECRET_KEY}
+
+      # Database URLs
+      MONGO_URL: ${MONGO_URL}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Encryption
+      STORE_ENCRYPTION_KEY: ${STORE_ENCRYPTION_KEY}
+
+      # Storage Configuration
+      STORAGE_SERVICE: ${STORAGE_SERVICE}
+      LOCAL_STORAGE_PATH: /usr/src/app/uploads
+
+      # S3 Configuration (if using S3)
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      S3_REGION: ${S3_REGION}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+
+      # API URL for Worker to communicate with API
+      API_ROOT_URL: http://novu-api:${API_PORT}
+
+      # Worker specific configs
+      WORKER_DEFAULT_CONCURRENCY: ${WORKER_DEFAULT_CONCURRENCY}
+      WORKER_DEFAULT_MAX_ATTEMPTS: ${WORKER_DEFAULT_MAX_ATTEMPTS}
+
+      # Docker specific
+      IS_DOCKER_HOSTED: true
+
+      # Optional services
+      NEW_RELIC_ENABLED: ${NEW_RELIC_ENABLED}
+      SENTRY_DSN: ${SENTRY_DSN}
+
+    ports:
+      - "${WORKER_PORT}:${WORKER_PORT}"
+    volumes:
+      - worker_logs:/usr/src/app/logs
+      - api_uploads:/usr/src/app/uploads
+    networks:
+      - novu-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    healthcheck:
+      test:
+        ["CMD", "curl", "-f", "http://localhost:${WORKER_PORT}/health-check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Novu Dashboard (Frontend)
+  novu-dashboard:
+    image: ${NOVU_DASHBOARD_IMAGE}
+    container_name: novu-dashboard
+    restart: unless-stopped
+    depends_on:
+      - novu-api
+    environment:
+      # Frontend configuration
+      NODE_ENV: ${NODE_ENV}
+
+      # API endpoints for Dashboard to connect to API
+      VITE_API_URL: ${VITE_API_URL}
+      REACT_APP_API_URL: ${REACT_APP_API_URL}
+
+      # WebSocket URL pointing to WS service
+      VITE_WS_URL: ${VITE_WS_URL}
+      REACT_APP_WS_URL: ${REACT_APP_WS_URL}
+
+      # Authentication (optional)
+      VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
+
+      # Monitoring (optional)
+      VITE_SENTRY_DSN: ${VITE_SENTRY_DSN}
+
+      # Feature flags and environment settings
+      VITE_SELF_HOSTED: "true"
+      VITE_ENVIRONMENT: ${NODE_ENV}
+
+    ports:
+      - "${DASHBOARD_PORT}:4200"
+    networks:
+      - novu-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4200"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Novu WebSocket Service
+  novu-ws:
+    image: ${NOVU_WS_IMAGE}
+    container_name: novu-ws
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+      - redis
+      - novu-api
+    environment:
+      # Core configuration
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${WS_PORT}
+
+      # JWT Configuration
+      JWT_SECRET: ${JWT_SECRET}
+
+      # Database URLs
+      MONGO_URL: ${MONGO_URL}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB_INDEX: 2
+
+      # API URL for WebSocket to communicate with API
+      API_ROOT_URL: http://novu-api:${API_PORT}
+      FRONT_BASE_URL: http://novu-dashboard:${DASHBOARD_PORT}
+
+      # Self-hosted flag
+      IS_SELF_HOSTED: true
+
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL}
+
+      # Optional services
+      NEW_RELIC_NO_CONFIG_FILE: true
+      SENTRY_DSN: ${SENTRY_DSN}
+
+    ports:
+      - "${WS_PORT}:${WS_PORT}"
+    volumes:
+      - ws_logs:/usr/src/app/logs
+    networks:
+      - novu-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${WS_PORT}/v1/health-check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+  api_logs:
+    driver: local
+  api_uploads:
+    driver: local
+  worker_logs:
+    driver: local
+  ws_logs:
+    driver: local
+
+networks:
+  novu-network:
+    driver: bridge
