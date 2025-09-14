@@ -1,28 +1,145 @@
-name: Deploy
+name: Deploy to Production Server
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Deploy services
+      - name: Add server to known hosts
         run: |
-          cd /home/dannv/docker-apps/novuservice
-          if [ ! -f .env ]; then
-            cp .env.example .env
-            echo "Copied .env.example to .env"
-          else
-            echo ".env file already exists"
-          fi
-          docker compose pull
-          docker compose up -d
+          ssh-keyscan -H 103.200.24.110 >> ~/.ssh/known_hosts
+
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          # Host
+          HOST_NAME=https://novuservice.quantriso.vn
+
+          # ENVIRONMENT SETTINGS
+          NODE_ENV=production
+
+          # =============================================================================
+          # DOCKER IMAGES
+          # =============================================================================
+          NOVU_API_IMAGE=${{ secrets.NOVU_API_IMAGE }}
+          NOVU_WORKER_IMAGE=${{ secrets.NOVU_WORKER_IMAGE }}
+          NOVU_DASHBOARD_IMAGE=${{ secrets.NOVU_DASHBOARD_IMAGE }}
+          NOVU_WS_IMAGE=${{ secrets.NOVU_WS_IMAGE }}
+
+          # PORTS CONFIGURATION
+          MONGO_PORT=${{ secrets.MONGO_PORT }}
+          REDIS_PORT=${{ secrets.REDIS_PORT }}
+          API_PORT=${{ secrets.API_PORT }}
+          WORKER_PORT=${{ secrets.WORKER_PORT }}
+          DASHBOARD_PORT=${{ secrets.DASHBOARD_PORT }}
+          WS_PORT=${{ secrets.WS_PORT }}
+
+          # DATABASE CONFIGURATION
+          MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}
+          MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}
+          MONGO_INITDB_DATABASE=${{ secrets.MONGO_INITDB_DATABASE }}
+          MONGO_URL=${{ secrets.MONGO_URL }}
+
+          # SECURITY CONFIGURATION
+          # =============================================================================
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          NOVU_SECRET_KEY=${{ secrets.NOVU_SECRET_KEY }}
+          STORE_ENCRYPTION_KEY=${{ secrets.STORE_ENCRYPTION_KEY }}
+
+          # STORAGE CONFIGURATION
+          STORAGE_SERVICE=${{ secrets.STORAGE_SERVICE }}
+          S3_BUCKET_NAME=${{ secrets.S3_BUCKET_NAME }}
+          S3_REGION=${{ secrets.S3_REGION }}
+          AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+          # Auth mode
+          VITE_AUTH_MODE=password
+
+          # FRONTEND CONFIGURATION
+          FRONT_BASE_URL=\${HOST_NAME}:\${DASHBOARD_PORT}
+          VITE_API_URL=\${HOST_NAME}:\${API_PORT}
+          REACT_APP_API_URL=\${HOST_NAME}:\${API_PORT}
+          VITE_WS_URL=ws://\${HOST_NAME}:\${WS_PORT}
+          REACT_APP_WS_URL=ws://\${HOST_NAME}:\${WS_PORT}
+          VITE_API_HOSTNAME=\${HOST_NAME}:\${API_PORT}
+          VITE_WEBSOCKET_HOSTNAME=ws://\${HOST_NAME}:\${WS_PORT}
+          VITE_LEGACY_DASHBOARD_URL=\${HOST_NAME}:\${DASHBOARD_PORT}/legacy
+
+          # WORKER CONFIGURATION
+          WORKER_DEFAULT_CONCURRENCY=${{ secrets.WORKER_DEFAULT_CONCURRENCY }}
+          WORKER_DEFAULT_MAX_ATTEMPTS=${{ secrets.WORKER_DEFAULT_MAX_ATTEMPTS }}
+
+          # LOGGING CONFIGURATION
+          LOG_LEVEL=${{ secrets.LOG_LEVEL }}
+
+          # THIRD-PARTY SERVICES (OPTIONAL)
+          NEW_RELIC_ENABLED=${{ secrets.NEW_RELIC_ENABLED }}
+          SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+          VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}
+
+          # EMAIL PROVIDERS (OPTIONAL)
+          SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}
+
+          # AUTHENTICATION (OPTIONAL)
+          VITE_CLERK_PUBLISHABLE_KEY=${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+
+          # Enterprise features
+          VITE_NOVU_ENTERPRISE=${{ secrets.VITE_NOVU_ENTERPRISE }}
+
+          # Intercom configuration (optional - set to empty to disable)
+          VITE_INTERCOM_APP_ID=${{ secrets.VITE_INTERCOM_APP_ID }}
+
+          # ADVANCED CONFIGURATION
+          REDIS_DB_INDEX=2
+
+          # Self-hosted flag
+          VITE_SELF_HOSTED=true
+          IS_SELF_HOSTED=true
+          EOF
+
+      - name: Copy files to server
+        run: |
+          scp -r . dev@103.200.24.110:/home/dev/novuservice/
+
+      - name: Deploy on server
+        run: |
+          ssh dev@103.200.24.110 << 'EOF'
+            cd /home/dev/novuservice
+            
+            # Pull latest images
+            docker-compose -f docker-compose.prod.yml pull
+            
+            # Stop existing containers
+            docker-compose -f docker-compose.prod.yml down
+            
+            # Start services
+            docker-compose -f docker-compose.prod.yml up -d
+            
+            # Wait for services to be ready
+            sleep 30
+            
+            # Check if services are running
+            docker-compose -f docker-compose.prod.yml ps
+            
+            # Restart nginx
+            echo 'zqpmmpqz' | sudo -S systemctl reload nginx
+          EOF
+
+      - name: Health check
+        run: |
+          sleep 60
+          curl -f https://novuservice.quantriso.vn || exit 1

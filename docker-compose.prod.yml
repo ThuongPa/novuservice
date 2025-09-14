@@ -4,16 +4,17 @@ services:
   # MongoDB database
   mongodb:
     image: mongo:5.0
-    container_name: novu-mongodb
+    container_name: novu-mongodb-prod
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
       MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
     ports:
-      - "${MONGO_PORT}:27017"
+      - "127.0.0.1:${MONGO_PORT}:27017"
     volumes:
       - mongodb_data:/data/db
+      - /etc/localtime:/etc/localtime:ro
     networks:
       - novu-network
     logging:
@@ -21,16 +22,22 @@ services:
       options:
         max-size: "50m"
         max-file: "5"
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Redis for caching and queues
   redis:
     image: redis:7-alpine
-    container_name: novu-redis
+    container_name: novu-redis-prod
     restart: unless-stopped
     ports:
-      - "${REDIS_PORT}:6379"
+      - "127.0.0.1:${REDIS_PORT}:6379"
     volumes:
       - redis_data:/data
+      - /etc/localtime:/etc/localtime:ro
     networks:
       - novu-network
     logging:
@@ -47,11 +54,13 @@ services:
   # Novu API
   novu-api:
     image: ${NOVU_API_IMAGE}
-    container_name: novu-api
+    container_name: novu-api-prod
     restart: unless-stopped
     depends_on:
-      - mongodb
-      - redis
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       # Core configuration
       NODE_ENV: ${NODE_ENV}
@@ -93,10 +102,11 @@ services:
       SENDGRID_API_KEY: ${SENDGRID_API_KEY}
 
     ports:
-      - "${API_PORT}:${API_PORT}"
+      - "127.0.0.1:${API_PORT}:${API_PORT}"
     volumes:
       - api_logs:/usr/src/app/logs
       - api_uploads:/usr/src/app/uploads
+      - /etc/localtime:/etc/localtime:ro
     networks:
       - novu-network
     logging:
@@ -115,12 +125,15 @@ services:
   # Novu Worker
   novu-worker:
     image: ${NOVU_WORKER_IMAGE}
-    container_name: novu-worker
+    container_name: novu-worker-prod
     restart: unless-stopped
     depends_on:
-      - mongodb
-      - redis
-      - novu-api
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      novu-api:
+        condition: service_healthy
     environment:
       # Core configuration
       NODE_ENV: ${NODE_ENV}
@@ -163,10 +176,11 @@ services:
       SENTRY_DSN: ${SENTRY_DSN}
 
     ports:
-      - "${WORKER_PORT}:${WORKER_PORT}"
+      - "127.0.0.1:${WORKER_PORT}:${WORKER_PORT}"
     volumes:
       - worker_logs:/usr/src/app/logs
       - api_uploads:/usr/src/app/uploads
+      - /etc/localtime:/etc/localtime:ro
     networks:
       - novu-network
     logging:
@@ -175,8 +189,7 @@ services:
         max-size: "50m"
         max-file: "5"
     healthcheck:
-      test:
-        ["CMD", "curl", "-f", "http://localhost:${WORKER_PORT}/health-check"]
+      test: ["CMD", "curl", "-f", "http://localhost:${WORKER_PORT}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -185,10 +198,10 @@ services:
   # Novu Dashboard (Frontend)
   novu-dashboard:
     image: ${NOVU_DASHBOARD_IMAGE}
-    container_name: novu-dashboard
+    container_name: novu-dashboard-prod
     restart: unless-stopped
     ports:
-      - "${DASHBOARD_PORT}:4200"
+      - "127.0.0.1:${DASHBOARD_PORT}:4200"
     environment:
       NODE_ENV: ${NODE_ENV}
       PORT: 4200
@@ -196,6 +209,7 @@ services:
       - ./.env
     volumes:
       - ./.env:/usr/src/app/apps/dashboard/.env
+      - /etc/localtime:/etc/localtime:ro
     networks:
       - novu-network
     logging:
@@ -213,12 +227,15 @@ services:
   # Novu WebSocket Service
   novu-ws:
     image: ${NOVU_WS_IMAGE}
-    container_name: novu-ws
+    container_name: novu-ws-prod
     restart: unless-stopped
     depends_on:
-      - mongodb
-      - redis
-      - novu-api
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      novu-api:
+        condition: service_healthy
     environment:
       # Core configuration
       NODE_ENV: ${NODE_ENV}
@@ -248,9 +265,10 @@ services:
       SENTRY_DSN: ${SENTRY_DSN}
 
     ports:
-      - "${WS_PORT}:${WS_PORT}"
+      - "127.0.0.1:${WS_PORT}:${WS_PORT}"
     volumes:
       - ws_logs:/usr/src/app/logs
+      - /etc/localtime:/etc/localtime:ro
     networks:
       - novu-network
     logging:
@@ -259,7 +277,7 @@ services:
         max-size: "50m"
         max-file: "5"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${WS_PORT}/v1/health-check"]
+      test: ["CMD", "curl", "-f", "http://localhost:${WS_PORT}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
