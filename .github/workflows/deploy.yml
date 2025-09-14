@@ -26,7 +26,7 @@ jobs:
         run: |
           cat > .env << EOF
           # Host
-          HOST_NAME=https://novuservice.quantriso.vn
+          HOST_NAME=https://noti.cudanso.net
 
           # ENVIRONMENT SETTINGS
           NODE_ENV=production
@@ -142,4 +142,4 @@ jobs:
       - name: Health check
         run: |
           sleep 60
-          curl -f https://novuservice.quantriso.vn || exit 1
+          curl -f https://noti.cudanso.net || exit 1
