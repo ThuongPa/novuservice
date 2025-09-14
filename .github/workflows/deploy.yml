@@ -113,6 +113,20 @@ jobs:
 
       - name: Copy files to server
         run: |
+          # Create a temporary directory with only necessary files
+          mkdir -p temp_deploy
+          cp -r . temp_deploy/
+          cd temp_deploy
+
+          # Remove unnecessary files and directories
+          rm -rf .git
+          rm -rf .github
+          rm -rf .gitignore
+          rm -rf README.md
+          rm -rf DEPLOYMENT_GUIDE.md
+          rm -rf deploy.sh
+
+          # Copy only necessary files
           scp -r . dev@103.200.24.110:/home/dev/novuservice/
 
       - name: Deploy on server
