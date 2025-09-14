@@ -20,10 +20,8 @@ jobs:
 
       - name: Add server to known hosts
         run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          ssh-keyscan -H 103.200.24.110 >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
+          echo "Adding server to known_hosts..."
+          ssh-keyscan -H 103.200.24.110 >> ~/.ssh/known_hosts || true
 
       - name: Create .env file
         run: |
@@ -126,11 +124,11 @@ jobs:
           cp -r .env temp_deploy/
 
           # Copy only necessary files
-          scp -r temp_deploy/* dev@103.200.24.110:/home/dev/novuservice/
+          scp -o StrictHostKeyChecking=no -r temp_deploy/* dev@103.200.24.110:/home/dev/novuservice/
 
       - name: Deploy on server
         run: |
-          ssh dev@103.200.24.110 << 'EOF'
+          ssh -o StrictHostKeyChecking=no dev@103.200.24.110 << 'EOF'
             cd /home/dev/novuservice
             
             # Pull latest images
