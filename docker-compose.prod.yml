@@ -116,7 +116,13 @@ services:
         max-file: "5"
     healthcheck:
       test:
-        ["CMD", "curl", "-f", "http://localhost:${API_PORT}/v1/health-check"]
+        [
+          "CMD",
+          "wget",
+          "-q",
+          "--spider",
+          "http://localhost:${API_PORT}/v1/health-check",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -189,7 +195,14 @@ services:
         max-size: "50m"
         max-file: "5"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${WORKER_PORT}/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "-q",
+          "--spider",
+          "http://localhost:${WORKER_PORT}/health",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -218,7 +231,7 @@ services:
         max-size: "50m"
         max-file: "5"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4200"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4200"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -277,7 +290,8 @@ services:
         max-size: "50m"
         max-file: "5"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${WS_PORT}/health"]
+      test:
+        ["CMD", "wget", "-q", "--spider", "http://localhost:${WS_PORT}/health"]
       interval: 30s
       timeout: 10s
       retries: 3

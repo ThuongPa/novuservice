@@ -51,7 +51,7 @@ echo "🏥 Performing health checks..."
 sleep 10
 
 # Check API health
-if curl -f http://localhost:3000/v1/health-check > /dev/null 2>&1; then
+if wget -q --spider http://localhost:3000/v1/health-check > /dev/null 2>&1; then
     echo "✅ API service is healthy"
 else
     echo "❌ API service health check failed"
@@ -60,7 +60,7 @@ else
 fi
 
 # Check Dashboard
-if curl -f http://localhost:4200 > /dev/null 2>&1; then
+if wget -q --spider http://localhost:4200 > /dev/null 2>&1; then
     echo "✅ Dashboard service is healthy"
 else
     echo "❌ Dashboard service health check failed"

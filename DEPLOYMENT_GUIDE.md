@@ -176,6 +176,18 @@ curl https://novuservice.quantriso.vn/v1/health-check
 
 ## Troubleshooting
 
+### Nếu container API báo "unhealthy":
+
+Vấn đề này thường xảy ra do health check sử dụng `curl` nhưng container không có `curl`. Đã được sửa trong docker-compose.prod.yml:
+
+```bash
+# Kiểm tra health check
+docker exec novu-api-prod wget -q --spider http://localhost:3000/v1/health-check
+
+# Nếu vẫn lỗi, restart container
+docker-compose restart novu-api
+```
+
 ### Nếu services không start:
 
 ```bash
