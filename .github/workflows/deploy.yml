@@ -158,6 +158,18 @@ jobs:
           echo "=== DEBUG: KIỂM TRA FILE .ENV CỤ THỂ ==="
           ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "ls -la /home/dev/novuservice/.env && echo 'File .env exists' || echo 'File .env does not exist'"
 
+          # Debug: Check for hidden files
+          echo "=== DEBUG: KIỂM TRA FILES ẨN ==="
+          ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "ls -la /home/dev/novuservice/ | grep '\.env'"
+
+          # Debug: Try to copy .env file separately
+          echo "=== DEBUG: COPY FILE .ENV RIÊNG BIỆT ==="
+          scp -o StrictHostKeyChecking=no .env dev@103.200.24.110:/home/dev/novuservice/.env
+
+          # Debug: Check again after separate copy
+          echo "=== DEBUG: KIỂM TRA SAU KHI COPY RIÊNG BIỆT ==="
+          ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "ls -la /home/dev/novuservice/.env && echo 'File .env exists after separate copy' || echo 'File .env still does not exist'"
+
       - name: Deploy on server
         run: |
           ssh -o StrictHostKeyChecking=no dev@103.200.24.110 << 'EOF'
