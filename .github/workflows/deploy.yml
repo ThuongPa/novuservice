@@ -121,6 +121,12 @@ jobs:
 
       - name: Copy files to server
         run: |
+          # Debug: Check if .env file exists locally
+          echo "=== DEBUG: KIỂM TRA FILE .ENV LOCAL ==="
+          ls -la .env
+          echo "=== DEBUG: NỘI DUNG FILE .ENV LOCAL ==="
+          cat .env
+
           # Create a temporary directory with only necessary files
           mkdir -p temp_deploy
 
@@ -130,12 +136,23 @@ jobs:
           cp -r nginx temp_deploy/
           cp -r .env temp_deploy/
 
+          # Debug: Check temp_deploy directory
+          echo "=== DEBUG: KIỂM TRA THƯ MỤC TEMP_DEPLOY ==="
+          ls -la temp_deploy/
+          echo "=== DEBUG: NỘI DUNG FILE .ENV TRONG TEMP_DEPLOY ==="
+          cat temp_deploy/.env
+
           # Remove old .env file on server first
           echo "Removing old .env file on server..."
           ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "rm -f /home/dev/novuservice/.env"
 
           # Copy only necessary files
+          echo "Copying files to server..."
           scp -o StrictHostKeyChecking=no -r temp_deploy/* dev@103.200.24.110:/home/dev/novuservice/
+
+          # Debug: Check if files were copied successfully
+          echo "=== DEBUG: KIỂM TRA FILES SAU KHI COPY ==="
+          ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "ls -la /home/dev/novuservice/"
 
       - name: Deploy on server
         run: |
