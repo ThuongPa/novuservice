@@ -128,9 +128,11 @@ jobs:
           cp -r docker-compose.yml temp_deploy/
           cp -r docker-compose.prod.yml temp_deploy/
           cp -r nginx temp_deploy/
-          cp -r .env temp_deploy/
 
-          # Copy only necessary files
+          # Copy .env file separately (required for hidden files)
+          scp -o StrictHostKeyChecking=no .env dev@103.200.24.110:/home/dev/novuservice/.env
+
+          # Copy other files
           scp -o StrictHostKeyChecking=no -r temp_deploy/* dev@103.200.24.110:/home/dev/novuservice/
 
       - name: Deploy on server
