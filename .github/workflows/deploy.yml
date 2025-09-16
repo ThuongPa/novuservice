@@ -121,12 +121,6 @@ jobs:
 
       - name: Copy files to server
         run: |
-          # Debug: Check if .env file exists locally
-          echo "=== DEBUG: KIỂM TRA FILE .ENV LOCAL ==="
-          ls -la .env
-          echo "=== DEBUG: NỘI DUNG FILE .ENV LOCAL ==="
-          head -10 .env
-
           # Create a temporary directory with only necessary files
           mkdir -p temp_deploy
 
@@ -134,64 +128,39 @@ jobs:
           cp -r docker-compose.yml temp_deploy/
           cp -r docker-compose.prod.yml temp_deploy/
           cp -r nginx temp_deploy/
-          cp -r .env temp_deploy/
-
-          # Debug: Check temp_deploy directory
-          echo "=== DEBUG: KIỂM TRA THƯ MỤC TEMP_DEPLOY ==="
-          ls -la temp_deploy/
-          echo "=== DEBUG: NỘI DUNG FILE .ENV TRONG TEMP_DEPLOY ==="
-          head -10 temp_deploy/.env
 
           # Remove old .env file on server first
-          echo "=== DEBUG: XÓA FILE .ENV CŨ TRÊN SERVER ==="
           ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "rm -f /home/dev/novuservice/.env"
 
-          # Copy only necessary files
-          echo "=== DEBUG: COPY FILES LÊN SERVER ==="
+          # Copy files to server
           scp -o StrictHostKeyChecking=no -r temp_deploy/* dev@103.200.24.110:/home/dev/novuservice/
 
-          # Debug: Check if files were copied successfully
-          echo "=== DEBUG: KIỂM TRA FILES SAU KHI COPY ==="
-          ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "ls -la /home/dev/novuservice/"
-
-          # Debug: Check specifically for .env file
-          echo "=== DEBUG: KIỂM TRA FILE .ENV CỤ THỂ ==="
-          ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "ls -la /home/dev/novuservice/.env && echo 'File .env exists' || echo 'File .env does not exist'"
-
-          # Debug: Check for hidden files
-          echo "=== DEBUG: KIỂM TRA FILES ẨN ==="
-          ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "ls -la /home/dev/novuservice/ | grep '\.env'"
-
-          # Debug: Try to copy .env file separately
-          echo "=== DEBUG: COPY FILE .ENV RIÊNG BIỆT ==="
+          # Copy .env file separately (required for hidden files)
           scp -o StrictHostKeyChecking=no .env dev@103.200.24.110:/home/dev/novuservice/.env
-
-          # Debug: Check again after separate copy
-          echo "=== DEBUG: KIỂM TRA SAU KHI COPY RIÊNG BIỆT ==="
-          ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "ls -la /home/dev/novuservice/.env && echo 'File .env exists after separate copy' || echo 'File .env still does not exist'"
 
       - name: Deploy on server
         run: |
           ssh -o StrictHostKeyChecking=no dev@103.200.24.110 << 'EOF'
             cd /home/dev/novuservice
             
-            # Test: Check if .env file was copied successfully
-            echo "=== KIỂM TRA FILE .ENV TRÊN SERVER ==="
-            ls -la .env
-            echo "=== NỘI DUNG FILE .ENV TRÊN SERVER ==="
-            head -10 .env
+            # Pull latest images
+            docker-compose -f docker-compose.prod.yml pull
             
-            # Comment out Docker deployment for testing
-            echo "=== DOCKER DEPLOYMENT COMMENTED FOR TESTING ==="
-            # docker-compose -f docker-compose.prod.yml pull
-            # docker-compose -f docker-compose.prod.yml down
-            # docker-compose -f docker-compose.prod.yml up -d
-            # sleep 30
-            # docker-compose -f docker-compose.prod.yml ps
+            # Stop existing containers
+            docker-compose -f docker-compose.prod.yml down
+            
+            # Start services
+            docker-compose -f docker-compose.prod.yml up -d
+            
+            # Wait for services to be ready
+            sleep 30
+            
+            # Check if services are running
+            docker-compose -f docker-compose.prod.yml ps
             
           EOF
 
-      # - name: Health check
-      #   run: |
-      #     sleep 60
-      #     curl -f https://noti.cudanso.net || exit 1
+      - name: Health check
+        run: |
+          sleep 60
+          curl -f https://noti.cudanso.net || exit 1
