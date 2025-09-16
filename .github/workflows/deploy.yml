@@ -154,6 +154,10 @@ jobs:
           echo "=== DEBUG: KIỂM TRA FILES SAU KHI COPY ==="
           ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "ls -la /home/dev/novuservice/"
 
+          # Debug: Check specifically for .env file
+          echo "=== DEBUG: KIỂM TRA FILE .ENV CỤ THỂ ==="
+          ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "ls -la /home/dev/novuservice/.env && echo 'File .env exists' || echo 'File .env does not exist'"
+
       - name: Deploy on server
         run: |
           ssh -o StrictHostKeyChecking=no dev@103.200.24.110 << 'EOF'
