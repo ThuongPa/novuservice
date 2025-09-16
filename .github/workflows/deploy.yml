@@ -158,4 +158,4 @@ jobs:
       - name: Health check
         run: |
           sleep 60
-          curl -f https://noti.cudanso.net || exit 1
+          curl -f https://novu.cudanso.net || exit 1
