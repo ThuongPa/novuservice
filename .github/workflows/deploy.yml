@@ -130,6 +130,10 @@ jobs:
           cp -r nginx temp_deploy/
           cp -r .env temp_deploy/
 
+          # Remove old .env file on server first
+          echo "Removing old .env file on server..."
+          ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "rm -f /home/dev/novuservice/.env"
+
           # Copy only necessary files
           scp -o StrictHostKeyChecking=no -r temp_deploy/* dev@103.200.24.110:/home/dev/novuservice/
 
