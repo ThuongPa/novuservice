@@ -83,8 +83,8 @@ jobs:
           REACT_APP_API_URL=\${API_HOST_NAME}:\${API_PORT}
           VITE_WS_URL=ws://\${WS_HOST_NAME}:\${WS_PORT}
           REACT_APP_WS_URL=ws://\${WS_HOST_NAME}:\${WS_PORT}
-          VITE_API_HOSTNAME=\${API_HOST_NAME}:\${API_PORT}
-          VITE_WEBSOCKET_HOSTNAME=ws://\${WS_HOST_NAME}:\${WS_PORT}
+          VITE_API_HOSTNAME=\${API_HOST_NAME}
+          VITE_WEBSOCKET_HOSTNAME=ws://\${WS_HOST_NAME}
           VITE_LEGACY_DASHBOARD_URL=\${DASHBOARD_HOST_NAME}:\${DASHBOARD_PORT}/legacy
 
           # WORKER CONFIGURATION
@@ -128,15 +128,10 @@ jobs:
           cp -r docker-compose.yml temp_deploy/
           cp -r docker-compose.prod.yml temp_deploy/
           cp -r nginx temp_deploy/
+          cp -r .env temp_deploy/
 
-          # Remove old .env file on server first
-          ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "rm -f /home/dev/novuservice/.env"
-
-          # Copy files to server
+          # Copy only necessary files
           scp -o StrictHostKeyChecking=no -r temp_deploy/* dev@103.200.24.110:/home/dev/novuservice/
-
-          # Copy .env file separately (required for hidden files)
-          scp -o StrictHostKeyChecking=no .env dev@103.200.24.110:/home/dev/novuservice/.env
 
       - name: Deploy on server
         run: |
