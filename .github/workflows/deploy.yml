@@ -29,15 +29,69 @@ jobs:
           echo "Removing old .env file..."
           rm -f .env
 
-          # Debug: Check if secrets are available
-          echo "=== DEBUG: KIỂM TRA GITHUB SECRETS ==="
-          echo "DASHBOARD_HOST_NAME: ${{ secrets.DASHBOARD_HOST_NAME }}"
-          echo "API_HOST_NAME: ${{ secrets.API_HOST_NAME }}"
-          echo "WS_HOST_NAME: ${{ secrets.WS_HOST_NAME }}"
-          echo "WORKER_HOST_NAME: ${{ secrets.WORKER_HOST_NAME }}"
-          echo "NOVU_API_IMAGE: ${{ secrets.NOVU_API_IMAGE }}"
+          # Create test .env file with fixed values
+          echo "Creating test .env file..."
+          cat > .env << 'EOF'
+          # Test .env file - Fixed values for testing
+          DASHBOARD_HOST_NAME=https://noti.cudanso.net
+          API_HOST_NAME=https://noti.cudanso.net
+          WS_HOST_NAME=wss://noti.cudanso.net
+          WORKER_HOST_NAME=https://noti.cudanso.net
+          NODE_ENV=production
+          NOVU_API_IMAGE=khoasoyoung/novu-api:1.1-production
+          NOVU_WORKER_IMAGE=khoasoyoung/novu-worker:1.1-production
+          NOVU_DASHBOARD_IMAGE=khoasoyoung/novu-dashboard:1.4-production
+          NOVU_WS_IMAGE=khoasoyoung/novu-ws:1.1-production
+          MONGO_PORT=27020
+          REDIS_PORT=6380
+          API_PORT=3000
+          WORKER_PORT=3002
+          DASHBOARD_PORT=4200
+          WS_PORT=3003
+          MONGO_INITDB_ROOT_USERNAME=root
+          MONGO_INITDB_ROOT_PASSWORD=password123
+          MONGO_INITDB_DATABASE=novu-db
+          MONGO_URL=mongodb://root:password123@mongodb:27017/novu-db?authSource=admin
+          JWT_SECRET=your-super-secret-jwt-key-change-this-in-production-must-be-long
+          NOVU_SECRET_KEY=your-novu-secret-key-change-this-in-production-must-be-long
+          STORE_ENCRYPTION_KEY=12345678901234567890123456789012
+          STORAGE_SERVICE=LOCAL
+          S3_BUCKET_NAME=
+          S3_REGION=us-east-1
+          AWS_ACCESS_KEY_ID=
+          AWS_SECRET_ACCESS_KEY=
+          VITE_AUTH_MODE=password
+          FRONT_BASE_URL=https://noti.cudanso.net
+          VITE_API_URL=https://noti.cudanso.net
+          REACT_APP_API_URL=https://noti.cudanso.net
+          VITE_WS_URL=wss://noti.cudanso.net
+          REACT_APP_WS_URL=wss://noti.cudanso.net
+          VITE_API_HOSTNAME=https://noti.cudanso.net
+          VITE_WEBSOCKET_HOSTNAME=wss://noti.cudanso.net
+          VITE_LEGACY_DASHBOARD_URL=https://noti.cudanso.net/legacy
+          WORKER_DEFAULT_CONCURRENCY=10
+          WORKER_DEFAULT_MAX_ATTEMPTS=3
+          LOG_LEVEL=info
+          NEW_RELIC_ENABLED=false
+          SENTRY_DSN=
+          VITE_SENTRY_DSN=
+          SENDGRID_API_KEY=
+          VITE_CLERK_PUBLISHABLE_KEY=
+          VITE_NOVU_ENTERPRISE=false
+          VITE_INTERCOM_APP_ID=
+          REDIS_DB_INDEX=2
+          VITE_SELF_HOSTED=true
+          IS_SELF_HOSTED=true
+          EOF
 
-          cat > .env << EOF
+          # Debug: Show .env file was created
+          echo "=== DEBUG: FILE .ENV ĐÃ TẠO ==="
+          ls -la .env
+          echo "=== DEBUG: NỘI DUNG FILE .ENV ==="
+          head -10 .env
+
+          # Original .env creation with secrets (commented out for testing)
+          # cat > .env << EOF
           # Host
           DASHBOARD_HOST_NAME=${{ secrets.DASHBOARD_HOST_NAME }}
           API_HOST_NAME=${{ secrets.API_HOST_NAME }}
@@ -127,66 +181,33 @@ jobs:
           IS_SELF_HOSTED=true
           EOF
 
-          # Debug: Verify .env file was created
-          echo "=== DEBUG: KIỂM TRA FILE .ENV ĐÃ TẠO ==="
-          ls -la .env
-          echo "=== DEBUG: NỘI DUNG FILE .ENV ==="
-          head -20 .env
-
       - name: Copy files to server
         run: |
-          # Debug: Check if .env file exists locally
-          echo "=== DEBUG: KIỂM TRA FILE .ENV LOCAL ==="
-          ls -la .env || echo "File .env không tồn tại!"
-          echo "=== DEBUG: NỘI DUNG FILE .ENV LOCAL ==="
-          cat .env || echo "Không thể đọc file .env!"
-
           # Create a temporary directory with only necessary files
           mkdir -p temp_deploy
 
           # Copy specific files and directories (excluding .git)
-          cp -r docker-compose.yml temp_deploy/ || echo "Lỗi copy docker-compose.yml"
-          cp -r docker-compose.prod.yml temp_deploy/ || echo "Lỗi copy docker-compose.prod.yml"
-          cp -r nginx temp_deploy/ || echo "Lỗi copy nginx"
-          cp -r .env temp_deploy/ || echo "Lỗi copy .env"
-
-          # Debug: Check temp_deploy directory
-          echo "=== DEBUG: KIỂM TRA THƯ MỤC TEMP_DEPLOY ==="
-          ls -la temp_deploy/
-          echo "=== DEBUG: NỘI DUNG FILE .ENV TRONG TEMP_DEPLOY ==="
-          cat temp_deploy/.env || echo "Không thể đọc file .env trong temp_deploy!"
-
-          # Remove old .env file on server first
-          echo "Removing old .env file on server..."
-          ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "rm -f /home/dev/novuservice/.env"
+          cp -r docker-compose.yml temp_deploy/
+          cp -r docker-compose.prod.yml temp_deploy/
+          cp -r nginx temp_deploy/
+          cp -r .env temp_deploy/
 
           # Copy only necessary files
-          echo "Copying files to server..."
-          scp -o StrictHostKeyChecking=no -r temp_deploy/* dev@103.200.24.110:/home/dev/novuservice/ || echo "Lỗi copy files lên server!"
-
-          # Debug: Check if files were copied successfully
-          echo "=== DEBUG: KIỂM TRA FILES SAU KHI COPY ==="
-          ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "ls -la /home/dev/novuservice/" || echo "Lỗi kết nối SSH!"
+          scp -o StrictHostKeyChecking=no -r temp_deploy/* dev@103.200.24.110:/home/dev/novuservice/
 
       - name: Deploy on server
         run: |
           ssh -o StrictHostKeyChecking=no dev@103.200.24.110 << 'EOF'
             cd /home/dev/novuservice
             
-            # Test: Check current .env file
-            echo "=== KIỂM TRA FILE .ENV HIỆN TẠI ==="
+            # Test: Check if .env file was copied successfully
+            echo "=== KIỂM TRA FILE .ENV TRÊN SERVER ==="
             ls -la .env
-            echo "=== NỘI DUNG FILE .ENV ==="
-            cat .env
-            
-            # Test: Check if new .env was copied
-            echo "=== KIỂM TRA FILE .ENV MỚI ĐÃ COPY ==="
-            ls -la .env
-            echo "=== NỘI DUNG FILE .ENV SAU KHI COPY ==="
-            cat .env
+            echo "=== NỘI DUNG FILE .ENV TRÊN SERVER ==="
+            head -10 .env
             
             # Comment out Docker deployment for testing
-            # echo "=== DOCKER DEPLOYMENT (COMMENTED FOR TESTING) ==="
+            echo "=== DOCKER DEPLOYMENT COMMENTED FOR TESTING ==="
             # docker-compose -f docker-compose.prod.yml pull
             # docker-compose -f docker-compose.prod.yml down
             # docker-compose -f docker-compose.prod.yml up -d
