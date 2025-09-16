@@ -138,24 +138,29 @@ jobs:
           ssh -o StrictHostKeyChecking=no dev@103.200.24.110 << 'EOF'
             cd /home/dev/novuservice
             
-            # Pull latest images
-            docker-compose -f docker-compose.prod.yml pull
+            # Test: Check current .env file
+            echo "=== KIỂM TRA FILE .ENV HIỆN TẠI ==="
+            ls -la .env
+            echo "=== NỘI DUNG FILE .ENV ==="
+            cat .env
             
-            # Stop existing containers
-            docker-compose -f docker-compose.prod.yml down
+            # Test: Check if new .env was copied
+            echo "=== KIỂM TRA FILE .ENV MỚI ĐÃ COPY ==="
+            ls -la .env
+            echo "=== NỘI DUNG FILE .ENV SAU KHI COPY ==="
+            cat .env
             
-            # Start services
-            docker-compose -f docker-compose.prod.yml up -d
-            
-            # Wait for services to be ready
-            sleep 30
-            
-            # Check if services are running
-            docker-compose -f docker-compose.prod.yml ps
+            # Comment out Docker deployment for testing
+            # echo "=== DOCKER DEPLOYMENT (COMMENTED FOR TESTING) ==="
+            # docker-compose -f docker-compose.prod.yml pull
+            # docker-compose -f docker-compose.prod.yml down
+            # docker-compose -f docker-compose.prod.yml up -d
+            # sleep 30
+            # docker-compose -f docker-compose.prod.yml ps
             
           EOF
 
-      - name: Health check
-        run: |
-          sleep 60
-          curl -f https://noti.cudanso.net || exit 1
+      # - name: Health check
+      #   run: |
+      #     sleep 60
+      #     curl -f https://noti.cudanso.net || exit 1
