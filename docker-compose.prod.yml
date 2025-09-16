@@ -153,6 +153,7 @@ services:
       MONGO_URL: ${MONGO_URL}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_DB_INDEX: ${REDIS_DB_INDEX}
 
       # Encryption
       STORE_ENCRYPTION_KEY: ${STORE_ENCRYPTION_KEY}
