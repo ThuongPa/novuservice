@@ -123,24 +123,24 @@ jobs:
         run: |
           # Debug: Check if .env file exists locally
           echo "=== DEBUG: KIỂM TRA FILE .ENV LOCAL ==="
-          ls -la .env
+          ls -la .env || echo "File .env không tồn tại!"
           echo "=== DEBUG: NỘI DUNG FILE .ENV LOCAL ==="
-          cat .env
+          cat .env || echo "Không thể đọc file .env!"
 
           # Create a temporary directory with only necessary files
           mkdir -p temp_deploy
 
           # Copy specific files and directories (excluding .git)
-          cp -r docker-compose.yml temp_deploy/
-          cp -r docker-compose.prod.yml temp_deploy/
-          cp -r nginx temp_deploy/
-          cp -r .env temp_deploy/
+          cp -r docker-compose.yml temp_deploy/ || echo "Lỗi copy docker-compose.yml"
+          cp -r docker-compose.prod.yml temp_deploy/ || echo "Lỗi copy docker-compose.prod.yml"
+          cp -r nginx temp_deploy/ || echo "Lỗi copy nginx"
+          cp -r .env temp_deploy/ || echo "Lỗi copy .env"
 
           # Debug: Check temp_deploy directory
           echo "=== DEBUG: KIỂM TRA THƯ MỤC TEMP_DEPLOY ==="
           ls -la temp_deploy/
           echo "=== DEBUG: NỘI DUNG FILE .ENV TRONG TEMP_DEPLOY ==="
-          cat temp_deploy/.env
+          cat temp_deploy/.env || echo "Không thể đọc file .env trong temp_deploy!"
 
           # Remove old .env file on server first
           echo "Removing old .env file on server..."
@@ -148,11 +148,11 @@ jobs:
 
           # Copy only necessary files
           echo "Copying files to server..."
-          scp -o StrictHostKeyChecking=no -r temp_deploy/* dev@103.200.24.110:/home/dev/novuservice/
+          scp -o StrictHostKeyChecking=no -r temp_deploy/* dev@103.200.24.110:/home/dev/novuservice/ || echo "Lỗi copy files lên server!"
 
           # Debug: Check if files were copied successfully
           echo "=== DEBUG: KIỂM TRA FILES SAU KHI COPY ==="
-          ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "ls -la /home/dev/novuservice/"
+          ssh -o StrictHostKeyChecking=no dev@103.200.24.110 "ls -la /home/dev/novuservice/" || echo "Lỗi kết nối SSH!"
 
       - name: Deploy on server
         run: |
