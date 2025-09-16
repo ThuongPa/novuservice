@@ -25,6 +25,10 @@ jobs:
 
       - name: Create .env file
         run: |
+          # Remove old .env file to ensure fresh configuration
+          echo "Removing old .env file..."
+          rm -f .env
+
           cat > .env << EOF
           # Host
           DASHBOARD_HOST_NAME=${{ secrets.DASHBOARD_HOST_NAME }}
@@ -149,8 +153,6 @@ jobs:
             # Check if services are running
             docker-compose -f docker-compose.prod.yml ps
             
-            # Restart nginx
-            echo 'zqpmmpqz' | sudo -S systemctl reload nginx
           EOF
 
       - name: Health check
