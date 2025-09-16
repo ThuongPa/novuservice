@@ -29,6 +29,14 @@ jobs:
           echo "Removing old .env file..."
           rm -f .env
 
+          # Debug: Check if secrets are available
+          echo "=== DEBUG: KIỂM TRA GITHUB SECRETS ==="
+          echo "DASHBOARD_HOST_NAME: ${{ secrets.DASHBOARD_HOST_NAME }}"
+          echo "API_HOST_NAME: ${{ secrets.API_HOST_NAME }}"
+          echo "WS_HOST_NAME: ${{ secrets.WS_HOST_NAME }}"
+          echo "WORKER_HOST_NAME: ${{ secrets.WORKER_HOST_NAME }}"
+          echo "NOVU_API_IMAGE: ${{ secrets.NOVU_API_IMAGE }}"
+
           cat > .env << EOF
           # Host
           DASHBOARD_HOST_NAME=${{ secrets.DASHBOARD_HOST_NAME }}
@@ -118,6 +126,12 @@ jobs:
           VITE_SELF_HOSTED=true
           IS_SELF_HOSTED=true
           EOF
+
+          # Debug: Verify .env file was created
+          echo "=== DEBUG: KIỂM TRA FILE .ENV ĐÃ TẠO ==="
+          ls -la .env
+          echo "=== DEBUG: NỘI DUNG FILE .ENV ==="
+          head -20 .env
 
       - name: Copy files to server
         run: |
